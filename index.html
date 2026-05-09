@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Observer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="loading" class="loading-screen">
+        <div class="orbit-spinner"></div>
+        <h2 id="loading-text" class="mt-4 text-xs neon-text-blue tracking-[0.5em] uppercase">Initializing Orbital Data</h2>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div class="ui-layer flex flex-col h-full p-4 md:p-6">
+        <header class="flex justify-between items-start">
+            <div class="interactive bg-black/20 p-2 rounded">
+                <h1 class="text-xl md:text-2xl font-bold uppercase tracking-tight">GLOBAL <span class="neon-text-blue">OBSERVER</span></h1>
+                <p class="text-[12px] text-gray-500 tracking-[0.3em]">NASA EONET</p>
+            </div>
+            
+            <div class="flex flex-col items-end gap-2 interactive">
+                <div class="glass-panel px-3 py-1.5 rounded flex items-center gap-3">
+                    <span class="text-[12px] text-gray-500 uppercase tracking-widest font-bold">Orbital Time</span>
+                    <span id="utcClock" class="font-mono text-xs text-cyan-400">00:00:00 UTC</span>
+                </div>
+                <button id="refreshBtn" class="glass-panel px-4 py-2 text-[12px] uppercase tracking-widest hover:bg-white/10 border border-white/10 rounded transition-all">Resync Feed</button>
+            </div>
+        </header>
+
+        <main class="flex-1 flex flex-col md:flex-row mt-6 gap-6 overflow-hidden">
+            <div id="sidebar" class="interactive w-full md:w-72 glass-panel flex flex-col overflow-hidden rounded-xl">
+                <div class="p-4 border-b border-white/5 bg-white/5">
+                    <div class="search-container">
+                        <input type="text" id="countrySearch" placeholder="Search Location / Country..." class="search-input" autocomplete="off">
+                        <div id="searchDropdown" class="glass-panel custom-scrollbar"></div>
+                    </div>
+                    <div class="flex justify-between items-center mt-2">
+                        <h2 class="text-[12px] font-bold uppercase tracking-widest">Active Events</h2>
+                        <span id="eventCount" class="font-mono text-cyan-400 text-[12px]">000</span>
+                    </div>
+                </div>
+                <div class="p-3 border-b border-white/5 bg-black/20 overflow-x-auto custom-scrollbar">
+                    <div class="flex flex-wrap gap-1" id="filterContainer">
+                        <button class="filter-btn active px-3 py-1.5 bg-white/5 rounded-full" data-category="all">ALL</button>
+                    </div>
+                </div>
+                <div id="eventList" class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1"></div>
+            </div>
+
+            <div class="flex-1"></div>
+
+            <div id="detailPanel" class="interactive hidden w-full md:w-72 glass-panel flex flex-col translate-x-full transition-transform duration-500 rounded-xl">
+                <div class="p-5 h-full flex flex-col">
+                    <button id="closeDetail" class="self-end text-[12px] text-gray-500 hover:text-white uppercase font-mono">BACK [ESC]</button>
+                    <div class="mt-6 flex-1 overflow-y-auto custom-scrollbar pr-1">
+                        <div id="detailCat" class="text-[12px] px-2 py-0.5 rounded-full uppercase border border-current bg-current bg-opacity-10 inline-block mb-3">Category</div>
+                        <h2 id="detailTitle" class="text-xs font-bold mb-3 leading-tight uppercase">Event Detail</h2>
+                        <div class="space-y-4 text-xs">
+                            <div class="bg-black/40 p-3 rounded border border-white/5">
+                                <h3 class="text-[12px] text-gray-500 mb-1 uppercase">Coordinate Lock</h3>
+                                <p id="detailCoords" class="font-mono text-white text-[12px] neon-text-orange">LAT: 0 | LON: 0</p>
+                            </div>
+                            <div class="space-y-2">
+                                <h3 class="text-[12px] text-gray-500 mb-1 uppercase tracking-widest">Data Streams</h3>
+                                <ul id="detailSources" class="space-y-2 text-[12px]"></ul>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="focusBtn" class="mt-6 w-full py-4 bg-orange-500 text-black font-bold uppercase text-[15px] rounded-lg transition-transform active:scale-95 shadow-xl">Recenter Focus</button>
+                </div>
+            </div>
+        </main>
+
+        <footer class="mt-auto pt-6 flex flex-col gap-4">
+            <div class="interactive glass-panel p-4 rounded-xl flex items-center gap-6">
+                <button id="playBtn" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-all border border-white/10 group">
+                    <svg id="playIcon" class="w-4 h-4 fill-white group-active:scale-90" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <div class="flex-1 flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-[12px] uppercase tracking-[0.2em] font-bold text-gray-400">
+                        <span>Archive -365D</span>
+                        <span id="timelineDate" class="text-cyan-400 text-xs">Loading Timeline...</span>
+                        <span>Present Day</span>
+                    </div>
+                    <input type="range" id="timelineSlider" min="0" max="365" value="365">
+                </div>
+            </div>
+            <div class="flex justify-between items-center text-[12px] uppercase tracking-[0.3em] text-gray-600">
+                <div class="bg-black/20 px-3 py-1 rounded coord-overlay flex gap-4">
+                    <span>EXPLORE SURFACE</span>
+                    <span id="liveCoords" class="neon-text-blue">LAT: -- | LON: --</span>
+                </div>
+                <div class="bg-black/20 px-2 py-1 rounded">UI BY CPE-NGG // NICOLE GURRO</div>
+            </div>
+        </footer>
+    </div>
+
+    <div id="tooltip"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
