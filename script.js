@@ -463,19 +463,39 @@ function updateUI(events) {
 function showEventDetails(event) {
     selectedEventId = event.id;
     isAutoRotating = false;
-    document.querySelectorAll('.event-card').forEach(c => {
-        c.classList.toggle('active-item', c.innerText.includes(event.title));
-    });
+    
     const panel = document.getElementById('detailPanel');
+    const sidebar = document.getElementById('sidebar');
     const spec = CATEGORY_SPECS[event.categories[0].id] || { color: '#fff' };
+
+    // Update active state in the event list
+    document.querySelectorAll('.event-card').forEach(c => {
+        c.classList.toggle('active-item', c.querySelector('h3').innerText === event.title.toUpperCase());
+    });
+
+    // MOBILE FIX: Hide the sidebar to make room for the detail panel
+    if (window.innerWidth < 768) {
+        sidebar.classList.add('hidden');
+    }
+
+    // Show the panel and trigger the slide-in animation
     panel.classList.remove('hidden');
-    setTimeout(() => panel.classList.remove('translate-x-full'), 10);
+    // Small delay to ensure the browser registers the removal of 'hidden' before animating
+    requestAnimationFrame(() => {
+        panel.classList.remove('translate-x-full');
+    });
+
+    // Populate Details content
     document.getElementById('detailCat').innerText = event.categories[0].title;
     document.getElementById('detailCat').style.color = spec.color;
     document.getElementById('detailCat').style.borderColor = spec.color;
     document.getElementById('detailTitle').innerText = event.title;
+    
     const coords = getPointFromGeometry(event.geometry);
-    if (coords) document.getElementById('detailCoords').innerText = `LAT: ${coords[1].toFixed(4)} | LON: ${coords[0].toFixed(4)}`;
+    if (coords) {
+        document.getElementById('detailCoords').innerText = `LAT: ${coords[1].toFixed(4)} | LON: ${coords[0].toFixed(4)}`;
+    }
+
     const sourceList = document.getElementById('detailSources');
     sourceList.innerHTML = '';
     event.sources.forEach(src => {
@@ -483,6 +503,7 @@ function showEventDetails(event) {
         li.innerHTML = `<a href="${src.url}" target="_blank" class="text-cyan-400 hover:underline break-all uppercase text-[12px] flex justify-between items-center bg-white/5 p-1 rounded">${src.id} <span class="text-[12px]">↗</span></a>`;
         sourceList.appendChild(li);
     });
+
     focusOnEvent(event);
 }
 
@@ -493,30 +514,22 @@ function setupEventListeners() {
         renderer.setSize(window.innerWidth, window.innerHeight); 
     });
 
-    // CUSTOM SEARCH DROPDOWN LOGIC
     const searchInput = document.getElementById('countrySearch');
     const dropdown = document.getElementById('searchDropdown');
 
     searchInput.addEventListener('input', (e) => {
         const val = e.target.value.trim().toUpperCase();
         dropdown.innerHTML = '';
-        
-        if (val.length < 1) {
-            dropdown.style.display = 'none';
-            return;
-        }
+        if (val.length < 1) { dropdown.style.display = 'none'; return; }
 
         const matches = [];
-        // Check Canonical names
         Object.keys(COUNTRY_COORDINATES).forEach(name => {
             if (name.includes(val)) matches.push({ display: name, key: name });
         });
-        // Check Aliases
         Object.entries(ALIASES).forEach(([alias, target]) => {
             if (alias.includes(val)) matches.push({ display: `${alias} (${target})`, key: target });
         });
 
-        // Unique matches based on key
         const uniqueMatches = Array.from(new Map(matches.map(m => [m.key, m])).values());
 
         if (uniqueMatches.length > 0) {
@@ -526,7 +539,6 @@ function setupEventListeners() {
                 div.className = 'search-item';
                 div.innerText = match.display;
                 div.onmousedown = (e) => {
-                    // Using mousedown to trigger before blur
                     e.preventDefault();
                     const coords = COUNTRY_COORDINATES[match.key];
                     focusOnCoordinates(coords[0], coords[1]);
@@ -540,21 +552,13 @@ function setupEventListeners() {
         }
     });
 
-    searchInput.addEventListener('blur', () => {
-        dropdown.style.display = 'none';
-    });
-
-    searchInput.addEventListener('focus', () => {
-        if (dropdown.children.length > 0) dropdown.style.display = 'block';
-    });
+    searchInput.addEventListener('blur', () => { dropdown.style.display = 'none'; });
+    searchInput.addEventListener('focus', () => { if (dropdown.children.length > 0) dropdown.style.display = 'block'; });
 
     searchInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             const val = searchInput.value.trim().toUpperCase();
-            let target = null;
-            if (COUNTRY_COORDINATES[val]) target = COUNTRY_COORDINATES[val];
-            else if (ALIASES[val]) target = COUNTRY_COORDINATES[ALIASES[val]];
-
+            let target = (COUNTRY_COORDINATES[val]) ? COUNTRY_COORDINATES[val] : (ALIASES[val] ? COUNTRY_COORDINATES[ALIASES[val]] : null);
             if (target) {
                 focusOnCoordinates(target[0], target[1]);
                 dropdown.style.display = 'none';
@@ -563,8 +567,21 @@ function setupEventListeners() {
         }
     });
 
+    // BACK BUTTON / ESC LOGIC
     document.getElementById('closeDetail').onclick = () => { 
-        document.getElementById('detailPanel').classList.add('translate-x-full'); 
+        const panel = document.getElementById('detailPanel');
+        const sidebar = document.getElementById('sidebar');
+
+        // Start the slide-out animation
+        panel.classList.add('translate-x-full'); 
+        
+        // Wait for the 500ms CSS transition to finish before hiding from layout
+        setTimeout(() => {
+            panel.classList.add('hidden');
+            // Bring the sidebar back on mobile
+            sidebar.classList.remove('hidden');
+        }, 500);
+
         isAutoRotating = true; 
         selectedEventId = null; 
         document.querySelectorAll('.active-item').forEach(el => el.classList.remove('active-item'));
@@ -583,13 +600,10 @@ function setupEventListeners() {
     window.addEventListener('mousemove', (e) => {
         mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-        
         raycaster.setFromCamera(mouse, camera);
 
-        // Live Coordinate Tracking
         const intersectsGlobe = raycaster.intersectObject(globe);
         if (intersectsGlobe.length > 0) {
-            // Coordinates relative to globe orientation
             const localPoint = globe.worldToLocal(intersectsGlobe[0].point.clone());
             const coords = vector3ToLatLon(localPoint);
             document.getElementById('liveCoords').innerText = `LAT: ${coords.lat.toFixed(2)} | LON: ${coords.lon.toFixed(2)}`;
@@ -597,7 +611,6 @@ function setupEventListeners() {
             document.getElementById('liveCoords').innerText = `LAT: -- | LON: --`;
         }
 
-        // Marker Interaction
         const visibleMarkers = eventMarkers.filter(m => m.group.visible);
         const intersects = raycaster.intersectObjects(visibleMarkers.map(m => m.core));
         const tooltip = document.getElementById('tooltip');

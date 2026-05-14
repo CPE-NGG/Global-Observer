@@ -20,12 +20,6 @@
 *   **Styling**: *Tailwind CSS* for a modern, responsive "NASA-style" HUD.
 *   **Data Source**: *NASA EONET API (v3)* providing live planetary event streams.
 
-## 📥 Quick Start
-
-1.  **Download** the `eonet_globe.html` file.
-2.  **Open** the file in any modern web browser (Chrome, Firefox, or Edge recommended).
-3.  **Explore**: No installation or build process is required—the engine is entirely self-contained.
-
 ## 🎮 Navigation Controls
 
 | Action | Control |
