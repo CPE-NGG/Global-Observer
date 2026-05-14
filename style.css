@@ -173,39 +173,52 @@ input[type=range]::-webkit-slider-thumb {
     text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
 }
 
-/* Ensure Sidebar and Detail Panel behave on small screens */
 @media (max-width: 767px) {
+    body {
+        font-size: 10px !important;
+    }
+
+    /* Make panels fill the viewport height */
     #sidebar, #detailPanel {
         width: 100% !important;
-        max-height: 70vh; 
-        position: relative;
-        z-index: 20;
+        height: 100% !important;
+        max-height: 100vh !important;
+        position: fixed !important; 
+        top: 0;
+        left: 0;
+        border-radius: 0;
+        z-index: 100;
     }
 
+    /* Slide-in transition for mobile (from the bottom) */
+    #detailPanel.translate-x-full {
+        transform: translateY(100%); /* Slide from bottom instead of side for better UX */
+    }
+    
     #detailPanel {
-        margin-top: 0;
+        transform: translateY(0);
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Target the footer container and its specific elements */
+    #focusBtn {
+        padding: 12px;
+        font-size: 12px;
+        margin-top: auto; /* Pushes it to the bottom of the flex container */
+    }
+
     footer {
-        padding-top: 1rem !important;
+        padding: 10px 15px !important;
+        background: rgba(0, 0, 0, 0.8); 
     }
 
     footer .flex.justify-between.items-center {
-        font-size: 8px !important;
-        letter-spacing: 0.1em !important;
-        flex-direction: column; 
-        gap: 8px;
-        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 8px;
     }
 
     .coord-overlay {
-        font-size: 8px !important;
-        letter-spacing: 1px !important;
-    }
-
-    footer div.bg-black\/20.px-2.py-1.rounded {
-        font-size: 7px;
-        opacity: 0.8;
+        font-size: 9px !important;
+        letter-spacing: 1px;
     }
 }
